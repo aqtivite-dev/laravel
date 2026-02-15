@@ -1,0 +1,32 @@
+{
+    "name": "aqtivite/laravel",
+    "description": "Laravel wrapper for the Aqtivite PHP SDK",
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": "^8.4",
+        "aqtivite/php": "^0.1.0",
+        "illuminate/support": "^11.0|^12.0",
+        "illuminate/http": "^11.0|^12.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Aqtivite\\Laravel\\": "src/"
+        },
+        "files": [
+            "src/helpers.php"
+        ]
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Aqtivite\\Laravel\\AqtiviteServiceProvider"
+            ],
+            "aliases": {
+                "Aqtivite": "Aqtivite\\Laravel\\Facades\\Aqtivite"
+            }
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
