@@ -10,7 +10,6 @@ class CacheTokenStore implements TokenStoreInterface
 {
     public function __construct(
         private readonly string $key = 'aqtivite_token',
-        private readonly ?int $ttl = null,
     ) {}
 
     public function get(): ?Token
@@ -38,8 +37,13 @@ class CacheTokenStore implements TokenStoreInterface
             'expires_in' => $token->expiresIn,
         ];
 
-        $this->ttl
-            ? Cache::put($this->key, $data, $this->ttl)
+        $token->expiresIn
+            ? Cache::put($this->key, $data, $token->expiresIn)
             : Cache::forever($this->key, $data);
+    }
+
+    public function forget(): void
+    {
+        Cache::forget($this->key);
     }
 }

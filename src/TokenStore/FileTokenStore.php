@@ -45,5 +45,15 @@ class FileTokenStore implements TokenStoreInterface
             'token_type' => $token->tokenType,
             'expires_in' => $token->expiresIn,
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), LOCK_EX);
+
+        // Restrict file permissions to owner only (read/write)
+        chmod($this->path, 0600);
+    }
+
+    public function forget(): void
+    {
+        if (file_exists($this->path)) {
+            unlink($this->path);
+        }
     }
 }

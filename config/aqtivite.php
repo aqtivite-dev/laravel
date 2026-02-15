@@ -76,7 +76,6 @@ return [
 
         // Cache driver options
         'cache_key' => 'aqtivite_token',
-        'cache_ttl' => 86400, // seconds (24 hours)
 
         // File driver options
         'file_path' => storage_path('app/aqtivite_token.json'),

@@ -15,4 +15,9 @@ interface TokenStoreInterface
      * Persist the given token to storage.
      */
     public function put(Token $token): void;
+
+    /**
+     * Remove the stored token from storage.
+     */
+    public function forget(): void;
 }

@@ -15,6 +15,10 @@ class AqtiviteServiceProvider extends ServiceProvider
     {
         $this->mergeConfigFrom(__DIR__ . '/../config/aqtivite.php', 'aqtivite');
 
+        $this->app->singleton(TokenStoreInterface::class, function ($app) {
+            return $this->resolveTokenStore($app['config']['aqtivite.token_store'] ?? []);
+        });
+
         $this->app->singleton(Aqtivite::class, function ($app) {
             return $this->createClient($app['config']['aqtivite']);
         });
@@ -35,7 +39,7 @@ class AqtiviteServiceProvider extends ServiceProvider
 
         $this->configureEnvironment($client, $config);
         $this->configureAuth($client, $config['auth'] ?? []);
-        $this->configureTokenStore($client, $config['token_store'] ?? []);
+        $this->configureTokenStore($client, $this->app->make(TokenStoreInterface::class));
 
         return $client;
     }
@@ -60,19 +64,27 @@ class AqtiviteServiceProvider extends ServiceProvider
         };
     }
 
-    protected function configureTokenStore(Aqtivite $client, array $config): void
+    protected function configureTokenStore(Aqtivite $client, TokenStoreInterface $store): void
     {
-        $store = $this->resolveTokenStore($config);
-
         // Load existing token from storage
-        $token = $store->get();
-        if ($token) {
-            $client->setToken($token->accessToken, $token->refreshToken);
+        try {
+            $token = $store->get();
+            if ($token) {
+                $client->setToken($token->accessToken, $token->refreshToken);
+            }
+        } catch (\Throwable $e) {
+            // Token store unavailable, will authenticate with credentials on first request
+            report($e);
         }
 
         // Register callback to persist tokens when they are refreshed
         $client->onTokenRefresh(function ($token) use ($store) {
-            $store->put($token);
+            try {
+                $store->put($token);
+            } catch (\Throwable $e) {
+                // Failed to persist token, but continue execution
+                report($e);
+            }
         });
     }
 
@@ -83,7 +95,6 @@ class AqtiviteServiceProvider extends ServiceProvider
         return match ($driver) {
             'cache' => new CacheTokenStore(
                 key: $config['cache_key'] ?? 'aqtivite_token',
-                ttl: $config['cache_ttl'] ?? null,
             ),
             'file' => new FileTokenStore(
                 path: $config['file_path'] ?? storage_path('app/aqtivite_token.json'),
