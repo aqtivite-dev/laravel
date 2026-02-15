@@ -2,7 +2,11 @@
 
 namespace Aqtivite\Laravel;
 
+use Aqtivite\Laravel\Console\CheckSessionCommand;
 use Aqtivite\Laravel\Console\ClearTokenCommand;
+use Aqtivite\Laravel\Console\HealthCommand;
+use Aqtivite\Laravel\Console\LoginCommand;
+use Aqtivite\Laravel\Console\LogoutCommand;
 use Aqtivite\Laravel\Console\StatusCommand;
 use Aqtivite\Laravel\Contracts\TokenStoreInterface;
 use Aqtivite\Laravel\Events\TokenLoaded;
@@ -34,12 +38,27 @@ class AqtiviteServiceProvider extends ServiceProvider
             __DIR__ . '/../config/aqtivite.php' => config_path('aqtivite.php'),
         ], 'aqtivite-config');
 
+        $this->registerMacros();
+
         if ($this->app->runningInConsole()) {
             $this->commands([
-                ClearTokenCommand::class,
+                LoginCommand::class,
+                LogoutCommand::class,
+                CheckSessionCommand::class,
+                HealthCommand::class,
                 StatusCommand::class,
+                ClearTokenCommand::class,
             ]);
         }
+    }
+
+    protected function registerMacros(): void
+    {
+        Aqtivite::macro('clearToken', function () {
+            $store = app(TokenStoreInterface::class);
+            $store->forget();
+            \Aqtivite\Laravel\Events\TokenCleared::dispatch();
+        });
     }
 
     protected function createClient(array $config): Aqtivite

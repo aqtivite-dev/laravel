@@ -3,6 +3,7 @@
 namespace Aqtivite\Laravel\TokenStore;
 
 use Aqtivite\Laravel\Contracts\TokenStoreInterface;
+use Aqtivite\Laravel\Events\TokenExpired;
 use Aqtivite\Php\Auth\Token;
 use Illuminate\Support\Carbon;
 
@@ -30,6 +31,14 @@ class FileTokenStore implements TokenStoreInterface
             $expiresAt = $createdAt->addSeconds($data['expires_in']);
 
             if ($expiresAt->isPast()) {
+                $token = new Token(
+                    accessToken: $data['access_token'],
+                    refreshToken: $data['refresh_token'] ?? null,
+                    tokenType: $data['token_type'] ?? 'Bearer',
+                    expiresIn: $data['expires_in'] ?? null,
+                );
+
+                TokenExpired::dispatch($token);
                 $this->forget();
                 return null;
             }
