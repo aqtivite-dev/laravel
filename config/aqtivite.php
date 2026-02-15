@@ -41,7 +41,7 @@ return [
     | Authentication
     |--------------------------------------------------------------------------
     |
-    | Supported methods: "password", "api_key", "token"
+    | Supported methods: "password", "api_key"
     |
     */
 
@@ -57,9 +57,29 @@ return [
         'api_key' => env('AQTIVITE_API_KEY'),
         'api_secret' => env('AQTIVITE_API_SECRET'),
 
-        // Token authentication
-        'access_token' => env('AQTIVITE_ACCESS_TOKEN'),
-        'refresh_token' => env('AQTIVITE_REFRESH_TOKEN'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Token Store
+    |--------------------------------------------------------------------------
+    |
+    | Token storage configuration. Tokens are automatically managed during
+    | the authentication lifecycle. Supported drivers: "cache", "file"
+    | You can also provide a custom class implementing TokenStoreInterface.
+    |
+    */
+
+    'token_store' => [
+
+        'driver' => env('AQTIVITE_TOKEN_STORE', 'cache'),
+
+        // Cache driver options
+        'cache_key' => 'aqtivite_token',
+        'cache_ttl' => 86400, // seconds (24 hours)
+
+        // File driver options
+        'file_path' => storage_path('app/aqtivite_token.json'),
 
     ],
 
