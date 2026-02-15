@@ -14,8 +14,8 @@ use Aqtivite\Laravel\Events\TokenRefreshed;
 use Aqtivite\Laravel\Http\LaravelTransport;
 use Aqtivite\Laravel\TokenStore\CacheTokenStore;
 use Aqtivite\Laravel\TokenStore\FileTokenStore;
-use Aqtivite\Php\Aqtivite;
 use Illuminate\Support\ServiceProvider;
+use Aqtivite\Php\Aqtivite as BaseAqtivite;
 
 class AqtiviteServiceProvider extends ServiceProvider
 {
@@ -30,6 +30,11 @@ class AqtiviteServiceProvider extends ServiceProvider
         $this->app->singleton(Aqtivite::class, function ($app) {
             return $this->createClient($app['config']['aqtivite']);
         });
+
+        // Bind base class to our extended implementation
+        $this->app->singleton(BaseAqtivite::class, function ($app) {
+            return $app->make(Aqtivite::class);
+        });
     }
 
     public function boot(): void
@@ -37,8 +42,6 @@ class AqtiviteServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__ . '/../config/aqtivite.php' => config_path('aqtivite.php'),
         ], 'aqtivite-config');
-
-        $this->registerMacros();
 
         if ($this->app->runningInConsole()) {
             $this->commands([
@@ -52,24 +55,21 @@ class AqtiviteServiceProvider extends ServiceProvider
         }
     }
 
-    protected function registerMacros(): void
-    {
-        Aqtivite::macro('clearToken', function () {
-            $store = app(TokenStoreInterface::class);
-            $store->forget();
-            \Aqtivite\Laravel\Events\TokenCleared::dispatch();
-        });
-    }
-
     protected function createClient(array $config): Aqtivite
     {
-        $client = new Aqtivite($config['client_id'], $config['client_secret']);
+        $tokenStore = $this->app->make(TokenStoreInterface::class);
+
+        $client = new Aqtivite(
+            clientId: $config['client_id'],
+            clientSecret: $config['client_secret'],
+            tokenStore: $tokenStore,
+        );
 
         $client->setTransport(new LaravelTransport);
 
         $this->configureEnvironment($client, $config);
         $this->configureAuth($client, $config['auth'] ?? []);
-        $this->configureTokenStore($client, $this->app->make(TokenStoreInterface::class));
+        $this->configureTokenStore($client, $tokenStore);
 
         return $client;
     }

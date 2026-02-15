@@ -4,8 +4,8 @@ if (! function_exists('aqtivite')) {
     /**
      * Get the Aqtivite client instance from the container.
      */
-    function aqtivite(): Aqtivite\Php\Aqtivite
+    function aqtivite(): Aqtivite\Laravel\Aqtivite
     {
-        return app(Aqtivite\Php\Aqtivite::class);
+        return app(Aqtivite\Laravel\Aqtivite::class);
     }
 }
