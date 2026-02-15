@@ -64,9 +64,31 @@ return [
     | Token Store
     |--------------------------------------------------------------------------
     |
-    | Token storage configuration. Tokens are automatically managed during
-    | the authentication lifecycle. Supported drivers: "cache", "file"
-    | You can also provide a custom class implementing TokenStoreInterface.
+    | Tokens are automatically managed during the authentication lifecycle:
+    | - On boot, tokens are loaded from storage
+    | - On expiry, tokens are refreshed automatically
+    | - On refresh, new tokens are persisted back to storage
+    |
+    | Supported drivers:
+    |
+    | "cache" (default) - Fast, recommended for most applications
+    |   - Uses Laravel's default cache driver (redis, memcached, etc.)
+    |   - Tokens expire automatically based on their lifetime
+    |   - Cleared when cache is flushed (php artisan cache:clear)
+    |
+    | "file" - Persistent storage on disk
+    |   - Tokens survive cache flushes and application restarts
+    |   - Useful for long-running processes (queues, scheduled tasks)
+    |   - Stored as JSON with restricted permissions (0600)
+    |
+    | Custom - Implement your own TokenStoreInterface
+    |   - Provide the fully-qualified class name
+    |   - Example: \App\Services\DatabaseTokenStore::class
+    |   - Must implement get(), put(), and forget() methods
+    |
+    | Artisan commands:
+    |   php artisan aqtivite:status       - Show current token status
+    |   php artisan aqtivite:clear-token  - Clear stored token
     |
     */
 
@@ -74,10 +96,10 @@ return [
 
         'driver' => env('AQTIVITE_TOKEN_STORE', 'cache'),
 
-        // Cache driver options
+        // Cache driver: Key used to store token in cache
         'cache_key' => 'aqtivite_token',
 
-        // File driver options
+        // File driver: Path to JSON file for token storage
         'file_path' => storage_path('app/aqtivite_token.json'),
 
     ],

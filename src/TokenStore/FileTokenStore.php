@@ -4,6 +4,7 @@ namespace Aqtivite\Laravel\TokenStore;
 
 use Aqtivite\Laravel\Contracts\TokenStoreInterface;
 use Aqtivite\Php\Auth\Token;
+use Illuminate\Support\Carbon;
 
 class FileTokenStore implements TokenStoreInterface
 {
@@ -21,6 +22,17 @@ class FileTokenStore implements TokenStoreInterface
 
         if (! is_array($data) || empty($data['access_token'])) {
             return null;
+        }
+
+        // Check if token is expired
+        if (isset($data['created_at'], $data['expires_in'])) {
+            $createdAt = Carbon::parse($data['created_at']);
+            $expiresAt = $createdAt->addSeconds($data['expires_in']);
+
+            if ($expiresAt->isPast()) {
+                $this->forget();
+                return null;
+            }
         }
 
         return new Token(
@@ -44,6 +56,7 @@ class FileTokenStore implements TokenStoreInterface
             'refresh_token' => $token->refreshToken,
             'token_type' => $token->tokenType,
             'expires_in' => $token->expiresIn,
+            'created_at' => Carbon::now()->toIso8601String(),
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), LOCK_EX);
 
         // Restrict file permissions to owner only (read/write)

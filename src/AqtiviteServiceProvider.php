@@ -2,7 +2,11 @@
 
 namespace Aqtivite\Laravel;
 
+use Aqtivite\Laravel\Console\ClearTokenCommand;
+use Aqtivite\Laravel\Console\StatusCommand;
 use Aqtivite\Laravel\Contracts\TokenStoreInterface;
+use Aqtivite\Laravel\Events\TokenLoaded;
+use Aqtivite\Laravel\Events\TokenRefreshed;
 use Aqtivite\Laravel\Http\LaravelTransport;
 use Aqtivite\Laravel\TokenStore\CacheTokenStore;
 use Aqtivite\Laravel\TokenStore\FileTokenStore;
@@ -29,6 +33,13 @@ class AqtiviteServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__ . '/../config/aqtivite.php' => config_path('aqtivite.php'),
         ], 'aqtivite-config');
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                ClearTokenCommand::class,
+                StatusCommand::class,
+            ]);
+        }
     }
 
     protected function createClient(array $config): Aqtivite
@@ -71,6 +82,7 @@ class AqtiviteServiceProvider extends ServiceProvider
             $token = $store->get();
             if ($token) {
                 $client->setToken($token->accessToken, $token->refreshToken);
+                TokenLoaded::dispatch($token);
             }
         } catch (\Throwable $e) {
             // Token store unavailable, will authenticate with credentials on first request
@@ -81,6 +93,7 @@ class AqtiviteServiceProvider extends ServiceProvider
         $client->onTokenRefresh(function ($token) use ($store) {
             try {
                 $store->put($token);
+                TokenRefreshed::dispatch($token);
             } catch (\Throwable $e) {
                 // Failed to persist token, but continue execution
                 report($e);
