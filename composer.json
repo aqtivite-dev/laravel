@@ -2,7 +2,14 @@
     "name": "aqtivite/laravel",
     "description": "Laravel wrapper for the Aqtivite PHP SDK",
     "type": "library",
-    "license": "MIT",
+    "license": "proprietary",
+    "authors": [
+        {
+            "name": "Aqtivite Team",
+            "email": "dev@aqtivite.com.tr",
+            "homepage": "https://aqtivite.com.tr"
+        }
+    ],
     "require": {
         "php": "^8.4",
         "aqtivite/php": "^0.1.0",
