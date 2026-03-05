@@ -30,14 +30,7 @@ class LaravelTransport implements HttpTransportInterface
                 $response = $request->send($method, $url, ['body' => http_build_query($options['form_params'])]);
             } elseif (isset($options['multipart'])) {
                 $request = $request->asMultipart();
-                foreach ($options['multipart'] as $part) {
-                    $request = $request->attach(
-                        $part['name'],
-                        $part['contents'],
-                        $part['filename'] ?? null,
-                    );
-                }
-                $response = $request->send($method, $url);
+                $response = $request->send($method, $url, ['multipart' => $options['multipart']]);
             } else {
                 $response = $request->send($method, $url);
             }
