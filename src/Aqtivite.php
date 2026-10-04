@@ -31,12 +31,16 @@ class Aqtivite extends \Aqtivite\Php\Aqtivite
 {
     use Macroable;
 
+    /**
+     * @param  string[]  $scopes
+     */
     public function __construct(
         string $clientId,
         string $clientSecret,
         protected TokenStoreInterface $tokenStore,
+        array $scopes = [],
     ) {
-        parent::__construct($clientId, $clientSecret);
+        parent::__construct($clientId, $clientSecret, $scopes);
     }
 
     /**

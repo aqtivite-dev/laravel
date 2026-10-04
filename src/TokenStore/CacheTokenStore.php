@@ -5,8 +5,8 @@ namespace Aqtivite\Laravel\TokenStore;
 use Aqtivite\Laravel\Contracts\TokenStoreInterface;
 use Aqtivite\Laravel\Events\TokenExpired;
 use Aqtivite\Php\Auth\Token;
+use DateTimeImmutable;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Carbon;
 
 class CacheTokenStore implements TokenStoreInterface
 {
@@ -22,45 +22,31 @@ class CacheTokenStore implements TokenStoreInterface
             return null;
         }
 
-        // Check if token is expired
-        if (isset($data['created_at'], $data['expires_in'])) {
-            $createdAt = Carbon::parse($data['created_at']);
-            $expiresAt = $createdAt->addSeconds($data['expires_in']);
+        $token = new Token(
+            accessToken: $data['access_token'],
+            expiresAt: isset($data['expires_at']) ? new DateTimeImmutable($data['expires_at']) : null,
+            tokenType: $data['token_type'] ?? 'Bearer',
+        );
 
-            if ($expiresAt->isPast()) {
-                $token = new Token(
-                    accessToken: $data['access_token'],
-                    refreshToken: $data['refresh_token'] ?? null,
-                    tokenType: $data['token_type'] ?? 'Bearer',
-                    expiresIn: $data['expires_in'] ?? null,
-                );
-
-                TokenExpired::dispatch($token);
-                $this->forget();
-                return null;
-            }
+        if ($token->isExpired(0)) {
+            TokenExpired::dispatch($token);
+            $this->forget();
+            return null;
         }
 
-        return new Token(
-            accessToken: $data['access_token'],
-            refreshToken: $data['refresh_token'] ?? null,
-            tokenType: $data['token_type'] ?? 'Bearer',
-            expiresIn: $data['expires_in'] ?? null,
-        );
+        return $token;
     }
 
     public function put(Token $token): void
     {
         $data = [
             'access_token' => $token->accessToken,
-            'refresh_token' => $token->refreshToken,
             'token_type' => $token->tokenType,
-            'expires_in' => $token->expiresIn,
-            'created_at' => Carbon::now()->toIso8601String(),
+            'expires_at' => $token->expiresAt?->format(DATE_ATOM),
         ];
 
-        $token->expiresIn
-            ? Cache::put($this->key, $data, $token->expiresIn)
+        $token->expiresAt
+            ? Cache::put($this->key, $data, $token->expiresAt)
             : Cache::forever($this->key, $data);
     }
 

@@ -38,26 +38,15 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Authentication
+    | Scopes
     |--------------------------------------------------------------------------
     |
-    | Supported methods: "password", "api_key"
+    | The scopes requested with the client credentials token, separated by
+    | spaces. Only the scopes granted to the client are issued.
     |
     */
 
-    'auth' => [
-
-        'method' => env('AQTIVITE_AUTH_METHOD', 'password'),
-
-        // Password authentication
-        'username' => env('AQTIVITE_USERNAME'),
-        'password' => env('AQTIVITE_PASSWORD'),
-
-        // API key authentication
-        'api_key' => env('AQTIVITE_API_KEY'),
-        'api_secret' => env('AQTIVITE_API_SECRET'),
-
-    ],
+    'scopes' => array_filter(explode(' ', env('AQTIVITE_SCOPES', ''))),
 
     /*
     |--------------------------------------------------------------------------
@@ -66,8 +55,8 @@ return [
     |
     | Tokens are automatically managed during the authentication lifecycle:
     | - On boot, tokens are loaded from storage
-    | - On expiry, tokens are refreshed automatically
-    | - On refresh, new tokens are persisted back to storage
+    | - On expiry, a new token is obtained automatically
+    | - New tokens are persisted back to storage
     |
     | Supported drivers:
     |

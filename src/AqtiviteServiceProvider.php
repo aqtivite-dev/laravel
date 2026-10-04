@@ -2,15 +2,13 @@
 
 namespace Aqtivite\Laravel;
 
-use Aqtivite\Laravel\Console\CheckSessionCommand;
 use Aqtivite\Laravel\Console\ClearTokenCommand;
 use Aqtivite\Laravel\Console\HealthCommand;
-use Aqtivite\Laravel\Console\LoginCommand;
-use Aqtivite\Laravel\Console\LogoutCommand;
 use Aqtivite\Laravel\Console\StatusCommand;
+use Aqtivite\Laravel\Console\TokenCommand;
 use Aqtivite\Laravel\Contracts\TokenStoreInterface;
 use Aqtivite\Laravel\Events\TokenLoaded;
-use Aqtivite\Laravel\Events\TokenRefreshed;
+use Aqtivite\Laravel\Events\TokenIssued;
 use Aqtivite\Laravel\Http\LaravelTransport;
 use Aqtivite\Laravel\TokenStore\CacheTokenStore;
 use Aqtivite\Laravel\TokenStore\FileTokenStore;
@@ -45,9 +43,7 @@ class AqtiviteServiceProvider extends ServiceProvider
 
         if ($this->app->runningInConsole()) {
             $this->commands([
-                LoginCommand::class,
-                LogoutCommand::class,
-                CheckSessionCommand::class,
+                TokenCommand::class,
                 HealthCommand::class,
                 StatusCommand::class,
                 ClearTokenCommand::class,
@@ -63,12 +59,12 @@ class AqtiviteServiceProvider extends ServiceProvider
             clientId: $config['client_id'],
             clientSecret: $config['client_secret'],
             tokenStore: $tokenStore,
+            scopes: $config['scopes'] ?? [],
         );
 
         $client->setTransport(new LaravelTransport);
 
         $this->configureEnvironment($client, $config);
-        $this->configureAuth($client, $config['auth'] ?? []);
         $this->configureTokenStore($client, $tokenStore);
 
         return $client;
@@ -85,22 +81,13 @@ class AqtiviteServiceProvider extends ServiceProvider
         }
     }
 
-    protected function configureAuth(Aqtivite $client, array $auth): void
-    {
-        match ($auth['method'] ?? 'password') {
-            'password' => $client->setAccount($auth['username'], $auth['password']),
-            'api_key' => $client->setApiKey($auth['api_key'], $auth['api_secret']),
-            default => null,
-        };
-    }
-
     protected function configureTokenStore(Aqtivite $client, TokenStoreInterface $store): void
     {
         // Load existing token from storage
         try {
             $token = $store->get();
             if ($token) {
-                $client->setToken($token->accessToken, $token->refreshToken);
+                $client->setToken($token->accessToken, $token->expiresAt);
                 TokenLoaded::dispatch($token);
             }
         } catch (\Throwable $e) {
@@ -108,11 +95,11 @@ class AqtiviteServiceProvider extends ServiceProvider
             report($e);
         }
 
-        // Register callback to persist tokens when they are refreshed
-        $client->onTokenRefresh(function ($token) use ($store) {
+        // Register callback to persist tokens when they are issued
+        $client->onTokenIssued(function ($token) use ($store) {
             try {
                 $store->put($token);
-                TokenRefreshed::dispatch($token);
+                TokenIssued::dispatch($token);
             } catch (\Throwable $e) {
                 // Failed to persist token, but continue execution
                 report($e);

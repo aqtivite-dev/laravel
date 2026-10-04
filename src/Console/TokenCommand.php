@@ -3,35 +3,33 @@
 namespace Aqtivite\Laravel\Console;
 
 use Aqtivite\Laravel\Events\AuthenticationFailed;
-use Aqtivite\Laravel\Events\LoginSucceeded;
 use Aqtivite\Php\Aqtivite;
 use Illuminate\Console\Command;
 
-class LoginCommand extends Command
+class TokenCommand extends Command
 {
-    protected $signature = 'aqtivite:login';
+    protected $signature = 'aqtivite:token';
 
-    protected $description = 'Authenticate with Aqtivite API and obtain a fresh token';
+    protected $description = 'Obtain a fresh client credentials token from the Aqtivite API';
 
     public function handle(Aqtivite $client): int
     {
-        $this->components->info('Authenticating with Aqtivite API...');
+        $this->components->info('Requesting a token from Aqtivite API...');
 
         try {
-            $token = $client->login();
-            LoginSucceeded::dispatch($token);
+            $token = $client->issueToken();
 
             $this->newLine();
-            $this->components->info('Authentication successful!');
+            $this->components->info('Token obtained successfully!');
             $this->newLine();
 
             $this->table(
                 ['Property', 'Value'],
                 [
                     ['Access Token', substr($token->accessToken, 0, 30) . '...'],
-                    ['Refresh Token', $token->refreshToken ? substr($token->refreshToken, 0, 30) . '...' : 'N/A'],
-                    ['Token Type', $token->tokenType ?? 'Bearer'],
-                    ['Expires In', $token->expiresIn ? $token->expiresIn . ' seconds' : 'N/A'],
+                    ['Token Type', $token->tokenType],
+                    ['Expires At', $token->expiresAt?->format(DATE_ATOM) ?? 'N/A'],
+                    ['Scopes', implode(' ', $client->getConfig()->getScopes()) ?: 'N/A'],
                 ]
             );
 

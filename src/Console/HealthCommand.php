@@ -35,18 +35,11 @@ class HealthCommand extends Command
 
         // 3. Check API connectivity
         try {
-            $response = $client->me();
+            $token = $client->issueToken();
 
-            if ($response->successful()) {
-                $checks[] = ['API Connectivity', '✓ Connected'];
-                $checks[] = ['Authentication', '✓ Valid'];
-
-                $user = $response->data;
-                $checks[] = ['User', $user['name'] ?? $user['email'] ?? 'N/A'];
-            } else {
-                $checks[] = ['API Connectivity', '✗ Failed'];
-                $checks[] = ['Authentication', '✗ Invalid'];
-            }
+            $checks[] = ['API Connectivity', '✓ Connected'];
+            $checks[] = ['Authentication', '✓ Valid'];
+            $checks[] = ['Expires At', $token->expiresAt?->format(DATE_ATOM) ?? 'N/A'];
         } catch (\Throwable $e) {
             $checks[] = ['API Connectivity', '✗ Failed'];
             $checks[] = ['Error', $e->getMessage()];

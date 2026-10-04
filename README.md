@@ -7,10 +7,10 @@ Laravel wrapper for the [Aqtivite PHP SDK](https://github.com/aqtivite/php), pro
 
 ## Features
 
-- 🔐 **Automatic Token Management** - Tokens are automatically stored, refreshed, and validated
+- 🔐 **Automatic Token Management** - Client credentials tokens are obtained, stored, and renewed before they expire
 - 📦 **Laravel Integration** - Facade, helper functions, and dependency injection support
-- 🎯 **Events** - Laravel events for token lifecycle (loaded, refreshed, expired, cleared)
-- ⚡ **Artisan Commands** - CLI commands for login, logout, health checks, and more
+- 🎯 **Events** - Laravel events for token lifecycle (loaded, issued, expired, cleared)
+- ⚡ **Artisan Commands** - CLI commands for obtaining tokens, health checks, and more
 - 🔧 **Flexible Storage** - Cache or file-based token storage with custom driver support
 - 🎨 **Macroable** - Extend the client with custom functionality using macros
 - 🛡️ **Type Safe** - Full IDE autocomplete and type hinting support
@@ -42,10 +42,8 @@ Add your Aqtivite credentials to your `.env` file:
 AQTIVITE_CLIENT_ID=your_client_id
 AQTIVITE_CLIENT_SECRET=your_client_secret
 
-# Authentication method: password or api_key
-AQTIVITE_AUTH_METHOD=password
-AQTIVITE_USERNAME=your_username
-AQTIVITE_PASSWORD=your_password
+# Scopes requested with the token, separated by spaces
+AQTIVITE_SCOPES="admin:tickets:read"
 
 # Optional: Use test environment
 AQTIVITE_TEST_MODE=false
@@ -65,13 +63,7 @@ return [
     'test_mode' => env('AQTIVITE_TEST_MODE', false),
     'base_url' => env('AQTIVITE_BASE_URL'),
 
-    'auth' => [
-        'method' => env('AQTIVITE_AUTH_METHOD', 'password'),
-        'username' => env('AQTIVITE_USERNAME'),
-        'password' => env('AQTIVITE_PASSWORD'),
-        'api_key' => env('AQTIVITE_API_KEY'),
-        'api_secret' => env('AQTIVITE_API_SECRET'),
-    ],
+    'scopes' => array_filter(explode(' ', env('AQTIVITE_SCOPES', ''))),
 
     'token_store' => [
         'driver' => env('AQTIVITE_TOKEN_STORE', 'cache'),
@@ -85,23 +77,14 @@ return [
 
 ### Basic Usage
 
+The client authenticates with the OAuth2 `client_credentials` grant. The token represents the client itself and carries only the scopes granted to it.
+
 Using the helper function:
 
 ```php
-// Get authenticated user
-$user = aqtivite()->me();
+$events = aqtivite()->user()->events()->get();
 
-// List users
-$users = aqtivite()->user()->list();
-
-// Get specific user
-$user = aqtivite()->user()->get($userId);
-
-// Create user
-$newUser = aqtivite()->user()->create([
-    'name' => 'John Doe',
-    'email' => 'john@example.com',
-]);
+$event = aqtivite()->user()->events()->find('etkinlik-slug');
 ```
 
 Using the Facade:
@@ -109,8 +92,7 @@ Using the Facade:
 ```php
 use Aqtivite\Laravel\Facades\Aqtivite;
 
-$user = Aqtivite::me();
-$users = Aqtivite::user()->list();
+$events = Aqtivite::user()->events()->get();
 ```
 
 Using dependency injection:
@@ -118,7 +100,7 @@ Using dependency injection:
 ```php
 use Aqtivite\Laravel\Aqtivite;
 
-class UserController extends Controller
+class EventController extends Controller
 {
     public function __construct(private Aqtivite $aqtivite)
     {
@@ -126,7 +108,7 @@ class UserController extends Controller
 
     public function index()
     {
-        return $this->aqtivite->user()->list();
+        return $this->aqtivite->user()->events()->get();
     }
 }
 ```
@@ -144,14 +126,11 @@ if (aqtivite()->hasStoredToken()) {
 // Get stored token
 $token = aqtivite()->getStoredToken();
 
-// Clear token (forces re-authentication on next request)
+// Clear token (a new one is obtained on the next request)
 aqtivite()->clearToken();
 
-// Manual login
-$token = aqtivite()->login();
-
-// Logout
-aqtivite()->logout();
+// Obtain a new token manually
+$token = aqtivite()->issueToken();
 ```
 
 ## Token Storage
@@ -209,9 +188,8 @@ class DatabaseTokenStore implements TokenStoreInterface
 
         return new Token(
             accessToken: $data->access_token,
-            refreshToken: $data->refresh_token,
+            expiresAt: $data->expires_at ? new DateTimeImmutable($data->expires_at) : null,
             tokenType: $data->token_type,
-            expiresIn: $data->expires_in,
         );
     }
 
@@ -221,9 +199,8 @@ class DatabaseTokenStore implements TokenStoreInterface
             ['id' => 1],
             [
                 'access_token' => $token->accessToken,
-                'refresh_token' => $token->refreshToken,
                 'token_type' => $token->tokenType,
-                'expires_in' => $token->expiresIn,
+                'expires_at' => $token->expiresAt?->format('Y-m-d H:i:s'),
                 'updated_at' => now(),
             ]
         );
@@ -251,17 +228,15 @@ Listen to token lifecycle events in your `EventServiceProvider`:
 ```php
 use Aqtivite\Laravel\Events\{
     TokenLoaded,
-    TokenRefreshed,
+    TokenIssued,
     TokenExpired,
     TokenCleared,
-    LoginSucceeded,
-    LogoutSucceeded,
     AuthenticationFailed,
 };
 
 protected $listen = [
-    TokenRefreshed::class => [
-        LogTokenRefresh::class,
+    TokenIssued::class => [
+        LogTokenIssued::class,
     ],
 
     TokenExpired::class => [
@@ -280,11 +255,9 @@ protected $listen = [
 | Event | Description | Properties |
 |-------|-------------|------------|
 | `TokenLoaded` | Token loaded from storage | `$token` |
-| `TokenRefreshed` | Token refreshed automatically | `$token` |
+| `TokenIssued` | New token obtained from the API | `$token` |
 | `TokenExpired` | Expired token detected and removed | `$token` |
 | `TokenCleared` | Token manually cleared | - |
-| `LoginSucceeded` | Manual login successful | `$token` |
-| `LogoutSucceeded` | Logout successful | - |
 | `AuthenticationFailed` | Authentication failed | `$message`, `$exception` |
 
 ### Example Listener
@@ -292,16 +265,15 @@ protected $listen = [
 ```php
 namespace App\Listeners;
 
-use Aqtivite\Laravel\Events\TokenRefreshed;
+use Aqtivite\Laravel\Events\TokenIssued;
 use Illuminate\Support\Facades\Log;
 
-class LogTokenRefresh
+class LogTokenIssued
 {
-    public function handle(TokenRefreshed $event): void
+    public function handle(TokenIssued $event): void
     {
-        Log::info('Aqtivite token refreshed', [
-            'expires_in' => $event->token->expiresIn,
-            'timestamp' => now(),
+        Log::info('Aqtivite token issued', [
+            'expires_at' => $event->token->expiresAt?->format(DATE_ATOM),
         ]);
     }
 }
@@ -309,28 +281,12 @@ class LogTokenRefresh
 
 ## Artisan Commands
 
-### Login
+### Token
 
-Manually authenticate and obtain a token:
-
-```bash
-php artisan aqtivite:login
-```
-
-### Logout
-
-Logout and clear the stored token:
+Obtain a new token and store it:
 
 ```bash
-php artisan aqtivite:logout
-```
-
-### Check Session
-
-Validate the current session and display user information:
-
-```bash
-php artisan aqtivite:check-session
+php artisan aqtivite:token
 ```
 
 ### Health Check
@@ -375,7 +331,7 @@ public function boot()
 }
 
 // Usage
-aqtivite()->admin()->users()->list();
+aqtivite()->admin()->tickets()->find('ABC123');
 ```
 
 ### Example: Admin Module
@@ -387,14 +343,9 @@ use Aqtivite\Php\Modules\Module;
 
 class AdminModule extends Module
 {
-    public function users()
+    public function tickets()
     {
-        return new AdminUserResource($this->http);
-    }
-
-    public function roles()
-    {
-        return new RoleResource($this->http);
+        return new TicketResource($this->http);
     }
 }
 ```
@@ -407,11 +358,11 @@ Mock the Aqtivite client in your tests:
 use Aqtivite\Laravel\Aqtivite;
 use Aqtivite\Php\Response\ApiResponse;
 
-public function test_user_list()
+public function test_event_list()
 {
     $mock = $this->mock(Aqtivite::class);
 
-    $mock->shouldReceive('user->list')
+    $mock->shouldReceive('user->events->get')
         ->once()
         ->andReturn(new ApiResponse(
             status: true,
@@ -421,7 +372,7 @@ public function test_user_list()
             ]
         ));
 
-    $response = $this->get('/api/users');
+    $response = $this->get('/api/events');
 
     $response->assertStatus(200);
 }
@@ -439,7 +390,7 @@ use Aqtivite\Php\Exceptions\{
 };
 
 try {
-    $user = aqtivite()->user()->get($userId);
+    $event = aqtivite()->user()->events()->find($slug);
 } catch (AuthenticationException $e) {
     // Authentication failed
     Log::error('Aqtivite auth failed: ' . $e->getMessage());

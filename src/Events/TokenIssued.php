@@ -6,7 +6,7 @@ use Aqtivite\Php\Auth\Token;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class LoginSucceeded
+class TokenIssued
 {
     use Dispatchable, SerializesModels;
 

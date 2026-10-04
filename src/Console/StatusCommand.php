@@ -4,7 +4,6 @@ namespace Aqtivite\Laravel\Console;
 
 use Aqtivite\Laravel\Contracts\TokenStoreInterface;
 use Illuminate\Console\Command;
-use Illuminate\Support\Carbon;
 
 class StatusCommand extends Command
 {
@@ -29,16 +28,10 @@ class StatusCommand extends Command
             ['Property', 'Value'],
             [
                 ['Access Token', substr($token->accessToken, 0, 20) . '...'],
-                ['Refresh Token', $token->refreshToken ? substr($token->refreshToken, 0, 20) . '...' : 'N/A'],
-                ['Token Type', $token->tokenType ?? 'Bearer'],
-                ['Expires In', $token->expiresIn ? $token->expiresIn . ' seconds' : 'N/A'],
+                ['Token Type', $token->tokenType],
+                ['Expires At', $token->expiresAt?->format(DATE_ATOM) ?? 'N/A'],
             ]
         );
-
-        if ($token->expiresIn) {
-            $this->newLine();
-            $this->components->info('Token is valid and will be used for API requests.');
-        }
 
         return self::SUCCESS;
     }
