@@ -57,6 +57,8 @@ return [
     | - On boot, tokens are loaded from storage
     | - On expiry, a new token is obtained automatically
     | - New tokens are persisted back to storage
+    | - The cache key and file name carry a fingerprint of the requested
+    |   scopes, so changing the scopes obtains a new token
     |
     | Supported drivers:
     |
@@ -86,7 +88,7 @@ return [
         'driver' => env('AQTIVITE_TOKEN_STORE', 'cache'),
 
         // Cache driver: Key used to store token in cache
-        'cache_key' => 'aqtivite_token',
+        'cache_key' => 'aqtivite:token',
 
         // File driver: Path to JSON file for token storage
         'file_path' => storage_path('app/aqtivite_token.json'),

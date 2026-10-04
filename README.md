@@ -67,7 +67,7 @@ return [
 
     'token_store' => [
         'driver' => env('AQTIVITE_TOKEN_STORE', 'cache'),
-        'cache_key' => 'aqtivite_token',
+        'cache_key' => 'aqtivite:token',
         'file_path' => storage_path('app/aqtivite_token.json'),
     ],
 ];
@@ -134,6 +134,8 @@ $token = aqtivite()->issueToken();
 ```
 
 ## Token Storage
+
+The cache key and file name carry a fingerprint of the requested scopes. When `AQTIVITE_SCOPES` changes, the previously stored token is ignored and a new one is obtained with the new scopes.
 
 ### Cache Driver (Default)
 

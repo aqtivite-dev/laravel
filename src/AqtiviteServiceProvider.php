@@ -22,7 +22,10 @@ class AqtiviteServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__ . '/../config/aqtivite.php', 'aqtivite');
 
         $this->app->singleton(TokenStoreInterface::class, function ($app) {
-            return $this->resolveTokenStore($app['config']['aqtivite.token_store'] ?? []);
+            return $this->resolveTokenStore(
+                $app['config']['aqtivite.token_store'] ?? [],
+                $app['config']['aqtivite.scopes'] ?? [],
+            );
         });
 
         $this->app->singleton(Aqtivite::class, function ($app) {
@@ -107,18 +110,32 @@ class AqtiviteServiceProvider extends ServiceProvider
         });
     }
 
-    protected function resolveTokenStore(array $config): TokenStoreInterface
+    /**
+     * @param  string[]  $scopes
+     */
+    protected function resolveTokenStore(array $config, array $scopes): TokenStoreInterface
     {
         $driver = $config['driver'] ?? 'cache';
+        $fingerprint = $this->scopeFingerprint($scopes);
 
         return match ($driver) {
             'cache' => new CacheTokenStore(
-                key: $config['cache_key'] ?? 'aqtivite_token',
+                key: ($config['cache_key'] ?? 'aqtivite:token') . ':' . $fingerprint,
             ),
             'file' => new FileTokenStore(
-                path: $config['file_path'] ?? storage_path('app/aqtivite_token.json'),
+                path: preg_replace('/(\.json)?$/', ".{$fingerprint}$1", $config['file_path'] ?? storage_path('app/aqtivite_token.json'), 1),
             ),
             default => $this->app->make($driver),
         };
+    }
+
+    /**
+     * @param  string[]  $scopes
+     */
+    protected function scopeFingerprint(array $scopes): string
+    {
+        sort($scopes);
+
+        return substr(sha1(implode(' ', $scopes)), 0, 12);
     }
 }

@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Cache;
 class CacheTokenStore implements TokenStoreInterface
 {
     public function __construct(
-        private readonly string $key = 'aqtivite_token',
+        private readonly string $key = 'aqtivite:token',
     ) {}
 
     public function get(): ?Token
