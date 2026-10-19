@@ -40,6 +40,7 @@ class HealthCommand extends Command
             $checks[] = ['API Connectivity', '✓ Connected'];
             $checks[] = ['Authentication', '✓ Valid'];
             $checks[] = ['Expires At', $token->expiresAt?->format(DATE_ATOM) ?? 'N/A'];
+            $checks[] = ['Scopes', implode(' ', $token->scopes) ?: '⚠ None'];
         } catch (\Throwable $e) {
             $checks[] = ['API Connectivity', '✗ Failed'];
             $checks[] = ['Error', $e->getMessage()];

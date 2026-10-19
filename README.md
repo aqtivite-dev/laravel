@@ -42,8 +42,9 @@ Add your Aqtivite credentials to your `.env` file:
 AQTIVITE_CLIENT_ID=your_client_id
 AQTIVITE_CLIENT_SECRET=your_client_secret
 
-# Scopes requested with the token, separated by spaces
-AQTIVITE_SCOPES="admin:tickets:read"
+# Optional: Narrow the token to these scopes (space-separated).
+# Leave unset to receive every scope granted to the client on the API.
+AQTIVITE_SCOPES=
 
 # Optional: Use test environment
 AQTIVITE_TEST_MODE=false
@@ -77,7 +78,7 @@ return [
 
 ### Basic Usage
 
-The client authenticates with the OAuth2 `client_credentials` grant. The token represents the client itself and carries only the scopes granted to it.
+The client authenticates with the OAuth2 `client_credentials` grant. The token represents the client itself and carries every scope granted to the client on the API, so no scope list is needed here. If a request needs a scope that was granted after the stored token was issued, the API answers `403 insufficient_scope`; the client obtains a fresh token and retries once.
 
 Using the helper function:
 
@@ -135,7 +136,7 @@ $token = aqtivite()->issueToken();
 
 ## Token Storage
 
-The cache key and file name carry a fingerprint of the requested scopes. When `AQTIVITE_SCOPES` changes, the previously stored token is ignored and a new one is obtained with the new scopes.
+When `AQTIVITE_SCOPES` is set, the cache key and file name carry a fingerprint of those scopes. Changing the list ignores the previously stored token and obtains a new one with the new scopes.
 
 ### Cache Driver (Default)
 
@@ -192,6 +193,7 @@ class DatabaseTokenStore implements TokenStoreInterface
             accessToken: $data->access_token,
             expiresAt: $data->expires_at ? new DateTimeImmutable($data->expires_at) : null,
             tokenType: $data->token_type,
+            scopes: json_decode($data->scopes ?? '[]', true),
         );
     }
 
@@ -203,6 +205,7 @@ class DatabaseTokenStore implements TokenStoreInterface
                 'access_token' => $token->accessToken,
                 'token_type' => $token->tokenType,
                 'expires_at' => $token->expiresAt?->format('Y-m-d H:i:s'),
+                'scopes' => json_encode($token->scopes),
                 'updated_at' => now(),
             ]
         );
@@ -389,6 +392,7 @@ use Aqtivite\Php\Exceptions\{
     AqtiviteException,
     AuthenticationException,
     ApiException,
+    MissingScopeException,
 };
 
 try {
@@ -396,6 +400,9 @@ try {
 } catch (AuthenticationException $e) {
     // Authentication failed
     Log::error('Aqtivite auth failed: ' . $e->getMessage());
+} catch (MissingScopeException $e) {
+    // Still missing after a fresh token: grant $e->scopes to the client on the API
+    Log::error('Aqtivite scope missing: ' . implode(' ', $e->scopes));
 } catch (ApiException $e) {
     // API error
     Log::error('Aqtivite API error: ' . $e->getMessage());

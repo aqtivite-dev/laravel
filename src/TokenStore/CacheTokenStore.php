@@ -26,6 +26,7 @@ class CacheTokenStore implements TokenStoreInterface
             accessToken: $data['access_token'],
             expiresAt: isset($data['expires_at']) ? new DateTimeImmutable($data['expires_at']) : null,
             tokenType: $data['token_type'] ?? 'Bearer',
+            scopes: $data['scopes'] ?? [],
         );
 
         if ($token->isExpired(0)) {
@@ -43,6 +44,7 @@ class CacheTokenStore implements TokenStoreInterface
             'access_token' => $token->accessToken,
             'token_type' => $token->tokenType,
             'expires_at' => $token->expiresAt?->format(DATE_ATOM),
+            'scopes' => $token->scopes,
         ];
 
         $token->expiresAt

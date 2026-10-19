@@ -45,6 +45,7 @@ class LaravelTransport implements HttpTransportInterface
         return new TransportResponse(
             statusCode: $response->status(),
             body: $response->json() ?? [],
+            headers: array_map(fn (array $values) => implode(', ', $values), $response->headers()),
         );
     }
 }

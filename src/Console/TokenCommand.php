@@ -29,7 +29,7 @@ class TokenCommand extends Command
                     ['Access Token', substr($token->accessToken, 0, 30) . '...'],
                     ['Token Type', $token->tokenType],
                     ['Expires At', $token->expiresAt?->format(DATE_ATOM) ?? 'N/A'],
-                    ['Scopes', implode(' ', $client->getConfig()->getScopes()) ?: 'N/A'],
+                    ['Scopes', implode(' ', $token->scopes) ?: 'N/A'],
                 ]
             );
 

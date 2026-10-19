@@ -30,6 +30,7 @@ class StatusCommand extends Command
                 ['Access Token', substr($token->accessToken, 0, 20) . '...'],
                 ['Token Type', $token->tokenType],
                 ['Expires At', $token->expiresAt?->format(DATE_ATOM) ?? 'N/A'],
+                ['Scopes', implode(' ', $token->scopes) ?: 'N/A'],
             ]
         );
 

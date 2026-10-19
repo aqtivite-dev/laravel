@@ -118,12 +118,15 @@ class AqtiviteServiceProvider extends ServiceProvider
         $driver = $config['driver'] ?? 'cache';
         $fingerprint = $this->scopeFingerprint($scopes);
 
+        $cacheKey = $config['cache_key'] ?? 'aqtivite:token';
+        $filePath = $config['file_path'] ?? storage_path('app/aqtivite_token.json');
+
         return match ($driver) {
             'cache' => new CacheTokenStore(
-                key: ($config['cache_key'] ?? 'aqtivite:token') . ':' . $fingerprint,
+                key: $fingerprint ? "{$cacheKey}:{$fingerprint}" : $cacheKey,
             ),
             'file' => new FileTokenStore(
-                path: preg_replace('/(\.json)?$/', ".{$fingerprint}$1", $config['file_path'] ?? storage_path('app/aqtivite_token.json'), 1),
+                path: $fingerprint ? preg_replace('/(\.json)?$/', ".{$fingerprint}$1", $filePath, 1) : $filePath,
             ),
             default => $this->app->make($driver),
         };
@@ -134,6 +137,10 @@ class AqtiviteServiceProvider extends ServiceProvider
      */
     protected function scopeFingerprint(array $scopes): string
     {
+        if ($scopes === []) {
+            return '';
+        }
+
         sort($scopes);
 
         return substr(sha1(implode(' ', $scopes)), 0, 12);

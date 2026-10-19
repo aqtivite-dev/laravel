@@ -41,8 +41,9 @@ return [
     | Scopes
     |--------------------------------------------------------------------------
     |
-    | The scopes requested with the client credentials token, separated by
-    | spaces. Only the scopes granted to the client are issued.
+    | Optional. Leave empty to receive every scope granted to the client on
+    | the API. Set a space-separated list to narrow the token to those
+    | scopes; scopes not granted to the client are not issued.
     |
     */
 
@@ -57,8 +58,8 @@ return [
     | - On boot, tokens are loaded from storage
     | - On expiry, a new token is obtained automatically
     | - New tokens are persisted back to storage
-    | - The cache key and file name carry a fingerprint of the requested
-    |   scopes, so changing the scopes obtains a new token
+    | - When scopes are set, the cache key and file name carry a fingerprint
+    |   of them, so changing the scopes obtains a new token
     |
     | Supported drivers:
     |
